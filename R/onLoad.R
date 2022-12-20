@@ -4,6 +4,10 @@
   if (!is.null(sys_url) && sys_url != "") {
     set_deims_base_url(sys_url)
   }
+  jsoncachedir <- Sys.getenv("ReLTER_jsoncachedir")
+  if (!is.null(jsoncachedir) && jsoncachedir != ""){
+    set_jsoncachedir(jsoncachedir)
+  }
 }
 
 # NOTE: to set the sys_url use:

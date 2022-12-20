@@ -72,16 +72,21 @@ get_id <- function(deimsid, resource = "sites", test, ...) {
     ))
 
   } else {
-    deimsbaseurl <- get_deims_base_url()
-    if (resource == "networks") {
-      url <- paste0(deimsbaseurl, "api/sites?network=", deimsid)
+    cachefilepath <- file.path(get_jsoncachedir(), "resource", paste0(deimsid, ".rds"))
+    if ( file.exists(cachefilepath) ){
+      jj <- readRDS(cachefilepath) 
     } else {
-      url <- file.path(deimsbaseurl, "api", resource, deimsid)
+      deimsbaseurl <- get_deims_base_url()
+      if (resource == "networks") {
+        url <- paste0(deimsbaseurl, "api/sites?network=", deimsid)
+        } else {
+          url <- file.path(deimsbaseurl, "api", resource, deimsid)
+        }
+      # Normal mode
+      export <- httr::RETRY("GET", url = url, ...)
+      jj <- suppressMessages(httr::content(export, "text", encoding = "UTF-8"))
+      
     }
-
-    # Normal mode
-    export <- httr::RETRY("GET", url = url, ...)
-    jj <- suppressMessages(httr::content(export, "text", encoding = "UTF-8"))
 
   }
 
@@ -97,6 +102,20 @@ get_id <- function(deimsid, resource = "sites", test, ...) {
 
 }
 
+get_id2 <- function(deimsid, resource = "sites", 
+                    use_cache_read = TRUE, 
+                    use_cache_write = TRUE, 
+                    cache_dir_read = get_jsoncachedir(), 
+                    cache_dir_write=cache_dir_read ){
+  if(Sys.getenv("LOCAL_DEIMS") == TRUE){
+    use_cache_read = TRUE
+    use_cache_write = FALSE
+    cache_dir_read = system.file(file.path("deimsid", resource), package = "ReLTER")
+    cache_dir_write = NULL
+  }
+  
+  
+}
 #' INTERNAL FUNCTION for package development only. Add new internal
 #' json for local tests.
 #' @param deimsid A `character`. It is the DEIMS ID (without url prefix)
@@ -112,9 +131,6 @@ get_id <- function(deimsid, resource = "sites", test, ...) {
 #' testing the package during development
 #' @noRd
 .save_id <- function(resource, deimsid, development=FALSE, ...) {
-  message("This function is intended for development purposes only.")
-  if(!development) warning("Caching a deims entity in the package internal folder")
-  
   # code to store locally
   if (resource == "networks") {
     # for Network
@@ -128,9 +144,8 @@ get_id <- function(deimsid, resource = "sites", test, ...) {
           export, "text", encoding = "UTF-8")
         )
   
-  path <- 
-    if(development) file.path("inst","deimsid", resource) else file.path(
-    system.file(file.path("deimsid", resource), package = "ReLTER"))
+  path <- file.path(get_jsoncachedir(),"deimsid", resource)
+  if(development) path <- file.path("inst","deimsid", resource)
   
   if(Sys.getenv("DEV_MODE")!="" && Sys.getenv("DEV_MODE")=="TRUE" && dir.exists(Sys.getenv("RELTER_DEV_INST_PATH"))){
     path <- file.path(Sys.getenv("RELTER_DEV_INST_PATH"), "deimsid", resource)
